@@ -1,0 +1,1963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0D0F14">
+<meta name="color-scheme" content="dark light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Nimbus IDE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --bg-void:#0D0F14;
+    --bg-panel:#14171F;
+    --bg-elevated:#1B1F2A;
+    --line:#262B38;
+    --text-primary:#E4E6EB;
+    --text-dim:#7C8394;
+    --accent:#E8A33D;
+    --accent-dim:#8A6A32;
+    --teal:#4FBFA8;
+    --red:#E5586B;
+    --radius:6px;
+    --icon-size:38px;
+  }
+  html[data-theme="light"]{
+    --bg-void:#FAFAF8;
+    --bg-panel:#F1EFE9;
+    --bg-elevated:#FFFFFF;
+    --line:#E1DCCF;
+    --text-primary:#1B1F2A;
+    --text-dim:#8A8272;
+    --accent:#B5762A;
+    --accent-dim:#D9B27C;
+    --teal:#2F8F7A;
+    --red:#C43F52;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    height:100%;
+    margin:0;
+    padding:0;
+    background:var(--bg-void);
+    color:var(--text-primary);
+    font-family:'JetBrains Mono',ui-monospace,'SF Mono',Consolas,monospace;
+    overflow:hidden;
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  button{
+    font-family:inherit;
+    color:inherit;
+    background:none;
+    border:none;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  input{
+    font-family:inherit;
+    color:inherit;
+  }
+  button:focus-visible, input:focus-visible, a:focus-visible{
+    outline:2px solid var(--accent);
+    outline-offset:2px;
+  }
+  #app{
+    position:fixed;
+    inset:0;
+    height:100vh;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    background:var(--bg-void);
+  }
+  .icon{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+  .icon-fill{fill:currentColor;stroke:none;}
+
+  /* Topbar */
+  .topbar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:3px;
+    padding:calc(env(safe-area-inset-top,0px) + 8px) 6px 8px;
+    background:var(--bg-panel);
+    border-bottom:1px solid var(--line);
+    z-index:20;
+  }
+  .icon-btn{
+    width:var(--icon-size);height:var(--icon-size);
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:var(--radius);
+    color:var(--text-primary);
+    touch-action:manipulation;
+  }
+  .icon-btn:active{background:var(--bg-elevated);transform:scale(0.94);}
+  .icon-btn.small{width:32px;height:32px;}
+  .icon-btn.accent-btn{color:var(--bg-void);background:var(--accent);}
+  .icon-btn.accent-btn:active{background:var(--accent-dim);}
+  .icon-btn[hidden]{display:none;}
+  .brand{
+    font-weight:700;
+    font-size:15px;
+    letter-spacing:0.2px;
+    padding:0 2px;
+    white-space:nowrap;
+  }
+  .brand-dim{color:var(--text-dim);font-weight:500;margin-left:2px;}
+  .topbar-spacer{flex:1;min-width:2px;}
+  .save-state{
+    font-size:11px;
+    color:var(--text-dim);
+    min-width:20px;
+    max-width:60px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    text-align:right;
+    flex:0 0 auto;
+  }
+  .save-state.saved{color:var(--teal);}
+  .save-state.error{color:var(--red);}
+  @media (max-width:370px){
+    .brand-dim{display:none;}
+    :root{--icon-size:34px;}
+  }
+
+  /* Drawer */
+  .backdrop{
+    position:fixed;inset:0;
+    background:rgba(3,4,6,0.5);
+    z-index:29;
+    opacity:0;pointer-events:none;
+    transition:opacity 0.18s ease;
+  }
+  .backdrop.show{opacity:1;pointer-events:auto;}
+  .drawer{
+    position:fixed;
+    top:0;bottom:0;left:0;
+    width:78vw;
+    max-width:300px;
+    background:var(--bg-panel);
+    border-right:1px solid var(--line);
+    z-index:30;
+    transform:translateX(-100%);
+    transition:transform 0.2s ease;
+    display:flex;
+    flex-direction:column;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 12px 10px;
+    font-size:11px;
+    letter-spacing:0.6px;
+    color:var(--text-dim);
+    border-bottom:1px solid var(--line);
+  }
+  .drawer-primary{
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  .drawer-primary .text-btn{
+    width:100%;
+    justify-content:flex-start;
+    gap:8px;
+    color:var(--text-primary);
+    font-weight:600;
+  }
+  .file-list{flex:1;overflow-y:auto;padding:6px 0;}
+  .file-item{
+    display:flex;align-items:center;
+    border-radius:var(--radius);
+    margin:0 6px 2px;
+    touch-action:manipulation;
+  }
+  .file-item.active{background:var(--bg-elevated);}
+  .file-open{
+    display:flex;align-items:center;gap:8px;
+    flex:1;min-width:0;
+    padding:9px 4px 9px 10px;
+    text-align:left;
+    border-radius:var(--radius);
+  }
+  .file-open:active{background:var(--bg-void);}
+  .file-badge{
+    flex:0 0 auto;
+    font-size:9px;
+    font-weight:700;
+    padding:2px 5px;
+    border-radius:4px;
+    border:1px solid currentColor;
+    min-width:28px;
+    text-align:center;
+    letter-spacing:0.3px;
+  }
+  .file-name{
+    flex:1;
+    font-size:13px;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+  }
+  .disk-dot{
+    flex:0 0 auto;
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--teal);
+  }
+  .file-menu-btn{
+    flex:0 0 auto;
+    width:30px;height:30px;
+    margin-right:2px;
+    color:var(--text-dim);
+    border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .file-menu-btn:active{background:var(--bg-void);}
+  .drawer-foot{
+    border-top:1px solid var(--line);
+    padding:10px 12px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+  }
+  .text-btn{
+    font-size:12px;
+    color:var(--accent);
+    padding:6px 0;
+    display:flex;
+    align-items:center;
+    touch-action:manipulation;
+  }
+  .text-btn.tiny{font-size:12px;padding:4px 8px;color:var(--text-dim);}
+  .text-btn.small{font-size:11px;color:var(--text-dim);}
+  .drawer-hint{
+    font-size:10px;
+    color:var(--text-dim);
+    margin-top:4px;
+    line-height:1.4;
+  }
+
+  /* Editor */
+  .editor-wrap{
+    flex:1 1 auto;
+    min-height:0;
+    position:relative;
+    background:var(--bg-void);
+  }
+  #editor{position:absolute;inset:0;}
+
+  /* Bottom sheet (console / preview / terminal) */
+  .sheet{
+    position:fixed;
+    left:0;right:0;bottom:0;
+    height:46vh;
+    background:var(--bg-panel);
+    border-top:1px solid var(--line);
+    z-index:25;
+    display:flex;
+    flex-direction:column;
+    transform:translateY(100%);
+    transition:transform 0.25s ease;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .sheet.open{transform:translateY(0);}
+  .sheet-head{
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:8px;
+    padding:8px 10px;
+    border-bottom:1px solid var(--line);
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .sheet-head-title{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+  .sheet-head-actions{display:flex;align-items:center;gap:2px;flex:0 0 auto;}
+  .preview-frame{flex:1;border:none;width:100%;background:#fff;}
+  .console-out{
+    flex:1;overflow-y:auto;
+    padding:8px 10px;
+    font-size:12px;
+    line-height:1.6;
+    -webkit-overflow-scrolling:touch;
+  }
+  .console-line{white-space:pre-wrap;word-break:break-word;border-bottom:1px solid var(--line);padding:3px 0;}
+  .console-line.error{color:var(--red);}
+  .console-line.warn{color:var(--accent);}
+  .console-line.info{color:var(--teal);}
+  .console-line.cmd{color:var(--text-dim);font-weight:600;border-bottom:none;padding-top:8px;}
+
+  /* Terminal specific */
+  .term-mode{display:flex;gap:4px;flex:0 0 auto;}
+  .term-mode-btn{padding:3px 9px;border:1px solid var(--line);border-radius:4px;font-size:11px;font-weight:600;color:var(--text-dim);}
+  .term-mode-btn.active{color:var(--bg-void);background:var(--accent);border-color:var(--accent);}
+  .term-input-row{
+    flex:0 0 auto;
+    display:flex;align-items:center;gap:6px;
+    padding:8px 10px;
+    border-top:1px solid var(--line);
+  }
+  .term-prompt{color:var(--teal);font-size:12px;font-weight:700;flex:0 0 auto;}
+  .term-input{
+    flex:1;min-width:0;
+    background:var(--bg-void);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:8px 10px;
+    font-size:13px;
+  }
+
+  /* Accessory bar */
+  .accessory-bar{
+    flex:0 0 auto;
+    display:flex;
+    overflow-x:auto;
+    gap:6px;
+    padding:6px 8px;
+    background:var(--bg-panel);
+    border-top:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  .accessory-bar::-webkit-scrollbar{display:none;}
+  .acc-key{
+    flex:0 0 auto;
+    min-width:38px;
+    height:34px;
+    padding:0 10px;
+    background:var(--bg-elevated);
+    border:1px solid var(--line);
+    border-radius:5px;
+    font-size:13px;
+    font-weight:600;
+    line-height:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    touch-action:manipulation;
+  }
+  .acc-key:active{transform:scale(0.92);background:var(--accent);color:var(--bg-void);}
+
+  /* Tab strip */
+  .tab-strip{
+    flex:0 0 auto;
+    display:flex;
+    overflow-x:auto;
+    background:var(--bg-panel);
+    border-top:1px solid var(--line);
+    scrollbar-width:none;
+  }
+  .tab-strip::-webkit-scrollbar{display:none;}
+  .tab-item{
+    flex:0 0 auto;
+    display:flex;align-items:center;
+    border-right:1px solid var(--line);
+    border-bottom:2px solid transparent;
+    touch-action:manipulation;
+  }
+  .tab-item.active{border-bottom:2px solid var(--accent);background:var(--bg-elevated);}
+  .tab-open{
+    display:flex;align-items:center;gap:6px;
+    padding:8px 4px 8px 10px;
+    font-size:12px;
+    color:var(--text-dim);
+    max-width:140px;
+  }
+  .tab-item.active .tab-open{color:var(--text-primary);}
+  .tab-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;}
+  .tab-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tab-close{
+    flex:0 0 auto;width:24px;height:24px;margin-right:4px;
+    color:var(--text-dim);border-radius:3px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .tab-close:active{background:var(--bg-void);}
+
+  /* Status bar */
+  .status-bar{
+    flex:0 0 auto;
+    display:flex;align-items:center;gap:10px;
+    padding:4px 10px calc(env(safe-area-inset-bottom,0px) + 4px);
+    background:var(--bg-elevated);
+    font-size:10px;
+    color:var(--text-dim);
+    letter-spacing:0.2px;
+  }
+  .status-spacer{flex:1;}
+
+  /* Modal (new file / rename / confirm) */
+  .modal-backdrop{
+    position:fixed;inset:0;
+    background:rgba(3,4,6,0.55);
+    z-index:60;
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;
+  }
+  .modal-backdrop.show{display:flex;}
+  .modal{
+    width:100%;max-width:320px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:16px;
+  }
+  .modal-title{font-size:14px;font-weight:700;margin-bottom:10px;}
+  .modal-msg{font-size:12px;color:var(--text-dim);margin-bottom:10px;line-height:1.5;}
+  .modal-msg.error{color:var(--red);}
+  .modal-input{
+    width:100%;
+    background:var(--bg-void);
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:9px 10px;
+    font-size:14px;
+    margin-bottom:8px;
+  }
+  .modal-input:focus{outline:1px solid var(--accent);}
+  .modal-actions{display:flex;justify-content:flex-end;align-items:center;gap:14px;margin-top:6px;}
+  .primary-btn{
+    font-size:13px;font-weight:600;
+    color:var(--bg-void);
+    background:var(--accent);
+    padding:8px 14px;
+    border-radius:6px;
+    touch-action:manipulation;
+  }
+  .primary-btn.danger{background:var(--red);}
+  .primary-btn:active{opacity:0.85;}
+
+  /* Action sheet */
+  .sheet-backdrop{
+    position:fixed;inset:0;
+    background:rgba(3,4,6,0.55);
+    z-index:60;
+    display:none;
+    align-items:flex-end;justify-content:center;
+  }
+  .sheet-backdrop.show{display:flex;}
+  .action-sheet{
+    width:100%;max-width:480px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-top-left-radius:12px;
+    border-top-right-radius:12px;
+    padding:10px 0 calc(env(safe-area-inset-bottom,0px) + 10px);
+  }
+  .action-sheet-title{
+    font-size:11px;color:var(--text-dim);
+    padding:6px 16px 10px;
+    border-bottom:1px solid var(--line);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .action-item{
+    display:block;width:100%;text-align:left;
+    padding:13px 16px;
+    font-size:14px;
+    border-bottom:1px solid var(--line);
+    touch-action:manipulation;
+  }
+  .action-item:active{background:var(--bg-elevated);}
+  .action-item.danger{color:var(--red);}
+  .action-item.cancel{color:var(--text-dim);border-bottom:none;margin-top:4px;}
+
+  /* Toast */
+  .toast{
+    position:fixed;
+    left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 90px);
+    transform:translateX(-50%) translateY(10px);
+    background:var(--bg-elevated);
+    border:1px solid var(--line);
+    color:var(--text-primary);
+    font-size:12px;
+    padding:9px 14px;
+    border-radius:8px;
+    z-index:80;
+    opacity:0;
+    pointer-events:none;
+    transition:opacity 0.2s ease, transform 0.2s ease;
+    max-width:80vw;
+    text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  /* Loading overlay */
+  #loadingOverlay{
+    position:fixed;inset:0;
+    background:var(--bg-void);
+    z-index:100;
+    display:flex;align-items:center;justify-content:center;
+    flex-direction:column;
+    gap:10px;
+    transition:opacity 0.25s ease;
+  }
+  #loadingOverlay.hidden{opacity:0;pointer-events:none;}
+  .load-brand{font-size:18px;font-weight:700;color:var(--text-primary);}
+  .load-sub{font-size:12px;color:var(--text-dim);}
+  .load-bar{width:120px;height:2px;background:var(--line);overflow:hidden;border-radius:2px;}
+  .load-bar-fill{width:40%;height:100%;background:var(--accent);animation:loadmove 1s ease-in-out infinite;}
+  @keyframes loadmove{
+    0%{transform:translateX(-100%);}
+    100%{transform:translateX(340%);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .drawer,.sheet,.backdrop,.icon-btn,.acc-key,.modal-backdrop,.sheet-backdrop,.file-item,.tab-item,.toast{
+      transition:none !important;
+    }
+    .load-bar-fill{animation:none;width:100%;}
+  }
+
+  /* Landscape / short-viewport compaction */
+  @media (orientation:landscape) and (max-height:520px){
+    .topbar{padding-top:calc(env(safe-area-inset-top,0px) + 4px);padding-bottom:4px;}
+    :root{--icon-size:32px;}
+    .icon-btn.small{width:28px;height:28px;}
+    .accessory-bar{padding:3px 8px;}
+    .acc-key{height:28px;min-width:32px;font-size:12px;padding:0 8px;}
+    .status-bar{padding-top:2px;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 2px);}
+    .tab-open{padding-top:5px;padding-bottom:5px;}
+    .sheet{height:66vh;}
+    .drawer{width:46vw;}
+    .drawer-head{padding:8px 12px 6px;}
+  }
+</style>
+</head>
+<body>
+
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
+  <symbol id="i-menu" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.6" y2="16.6"/></symbol>
+  <symbol id="i-align" viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="14" y2="12"/><line x1="4" y1="18" x2="18" y2="18"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-terminal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><line x1="12" y1="15" x2="16" y2="15"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 6a1 1 0 0 1 1-1h5l2 2h9a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/></symbol>
+</svg>
+
+<div id="loadingOverlay">
+  <div class="load-brand">Nimbus IDE</div>
+  <div class="load-bar"><div class="load-bar-fill"></div></div>
+  <div class="load-sub">Warming up the editor…</div>
+</div>
+
+<div id="app">
+  <header class="topbar">
+    <button id="btnMenu" class="icon-btn" aria-label="Open files"><svg class="icon" aria-hidden="true"><use href="#i-menu"></use></svg></button>
+    <div class="brand">Nimbus<span class="brand-dim">IDE</span></div>
+    <div class="topbar-spacer"></div>
+    <button id="btnTerminal" class="icon-btn" aria-label="Terminal"><svg class="icon" aria-hidden="true"><use href="#i-terminal"></use></svg></button>
+    <button id="btnFind" class="icon-btn" aria-label="Find in file"><svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg></button>
+    <button id="btnFormat" class="icon-btn" aria-label="Format document"><svg class="icon" aria-hidden="true"><use href="#i-align"></use></svg></button>
+    <button id="btnPreview" class="icon-btn accent-btn" aria-label="Run" hidden><svg class="icon icon-fill" aria-hidden="true"><use href="#i-play"></use></svg></button>
+    <div id="saveState" class="save-state" role="status" aria-live="polite">Ready</div>
+  </header>
+
+  <main class="editor-wrap">
+    <div id="editor"></div>
+  </main>
+
+  <div id="sheet" class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-head-title"><span id="sheetTitle">Console</span></div>
+      <div class="sheet-head-actions">
+        <button id="btnClearSheet" class="text-btn small">Clear</button>
+        <button id="btnCloseSheet" class="icon-btn small" aria-label="Close panel"><svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg></button>
+      </div>
+    </div>
+    <iframe id="previewFrame" class="preview-frame" hidden title="Preview" sandbox="allow-scripts allow-modals allow-forms"></iframe>
+    <div id="consoleOut" class="console-out"></div>
+  </div>
+
+  <div id="terminalSheet" class="sheet">
+    <div class="sheet-head">
+      <div class="sheet-head-title">
+        <span>Terminal</span>
+        <div class="term-mode">
+          <button id="termModeJs" type="button" class="term-mode-btn active" data-mode="js">JS</button>
+          <button id="termModePy" type="button" class="term-mode-btn" data-mode="py">PY</button>
+        </div>
+      </div>
+      <div class="sheet-head-actions">
+        <button id="btnClearTerminal" class="text-btn small">Clear</button>
+        <button id="btnCloseTerminal" class="icon-btn small" aria-label="Close terminal"><svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg></button>
+      </div>
+    </div>
+    <div id="terminalOut" class="console-out"></div>
+    <div class="term-input-row">
+      <span class="term-prompt" id="termPrompt">js&gt;</span>
+      <input id="terminalInput" class="term-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="ls, cat file, run file, or an expression" aria-label="Terminal input"/>
+    </div>
+  </div>
+
+  <div id="accessoryBar" class="accessory-bar"></div>
+
+  <div id="tabStrip" class="tab-strip"></div>
+
+  <div class="status-bar">
+    <span id="statusLang">—</span>
+    <span id="statusPos">Ln 1, Col 1</span>
+    <div class="status-spacer"></div>
+    <button id="btnFontDown" class="text-btn tiny" aria-label="Decrease font size">A−</button>
+    <button id="btnFontUp" class="text-btn tiny" aria-label="Increase font size">A+</button>
+    <button id="btnTheme" class="text-btn tiny" aria-label="Toggle theme"><svg class="icon icon-fill" style="width:13px;height:13px" aria-hidden="true"><use href="#i-moon"></use></svg></button>
+  </div>
+</div>
+
+<div id="backdrop" class="backdrop"></div>
+<aside id="drawer" class="drawer">
+  <div class="drawer-head">
+    <span>EXPLORER</span>
+    <button id="btnNewFile" class="icon-btn small" aria-label="New file"><svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg></button>
+  </div>
+  <div class="drawer-primary">
+    <button id="btnOpenFolder" class="text-btn">
+      <svg class="icon" style="width:15px;height:15px" aria-hidden="true"><use href="#i-folder"></use></svg>
+      Open folder (device)
+    </button>
+  </div>
+  <div id="fileList" class="file-list"></div>
+  <div class="drawer-foot">
+    <button id="btnImportFiles" class="text-btn">Import files…</button>
+    <button id="btnImportZip" class="text-btn">Import project (.zip)</button>
+    <button id="btnDownloadZip" class="text-btn">Download project (.zip)</button>
+    <div class="drawer-hint">Files save to this device automatically. Nothing leaves your phone.</div>
+  </div>
+</aside>
+
+<input type="file" id="importFileInput" multiple hidden style="display:none">
+<input type="file" id="importZipInput" accept=".zip,application/zip" hidden style="display:none">
+
+<div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div id="modalTitle" class="modal-title">New file</div>
+    <input id="modalInput" class="modal-input" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="name.ext"/>
+    <div id="modalMsg" class="modal-msg" hidden></div>
+    <div class="modal-actions">
+      <button id="modalCancel" class="text-btn">Cancel</button>
+      <button id="modalOk" class="primary-btn">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="actionSheetBackdrop" class="sheet-backdrop" role="dialog" aria-modal="true" aria-labelledby="actionSheetTitle">
+  <div class="action-sheet">
+    <div id="actionSheetTitle" class="action-sheet-title">File</div>
+    <div id="actionSheetBody"></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min/vs/loader.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var MONACO_BASE = "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.47.0/min";
+  var PYODIDE_VERSION = "0.26.2";
+
+  window.MonacoEnvironment = {
+    getWorkerUrl: function () {
+      return "data:text/javascript;charset=utf-8," + encodeURIComponent(
+        "self.MonacoEnvironment = { baseUrl: '" + MONACO_BASE + "/' };" +
+        "importScripts('" + MONACO_BASE + "/vs/base/worker/workerMain.js');"
+      );
+    }
+  };
+
+  require.config({ paths: { vs: MONACO_BASE + "/vs" } });
+  require(["vs/editor/editor.main"], function () {
+    initApp().catch(function(e){
+      console.error(e);
+      var lo = document.getElementById("loadingOverlay");
+      if (lo) { lo.querySelector(".load-sub").textContent = "Something went wrong loading Nimbus."; }
+    });
+  });
+
+  /* ---------- storage abstraction ---------- */
+  /* Priority: Claude artifact storage -> native Android bridge -> browser localStorage */
+  var Storage = {
+    get: function(key){
+      if (window.storage){
+        return window.storage.get(key, false).then(function(r){ return r ? r.value : null; }).catch(function(){ return null; });
+      }
+      if (window.AndroidBridge && window.AndroidBridge.getItem){
+        try { return Promise.resolve(window.AndroidBridge.getItem(key)); } catch(e){ return Promise.resolve(null); }
+      }
+      try { return Promise.resolve(window.localStorage.getItem(key)); } catch(e){ return Promise.resolve(null); }
+    },
+    set: function(key, value){
+      if (window.storage){
+        return window.storage.set(key, value, false).then(function(r){ return !!r; }).catch(function(){ return false; });
+      }
+      if (window.AndroidBridge && window.AndroidBridge.setItem){
+        try { window.AndroidBridge.setItem(key, value); return Promise.resolve(true); } catch(e){ return Promise.resolve(false); }
+      }
+      try { window.localStorage.setItem(key, value); return Promise.resolve(true); } catch(e){ return Promise.resolve(false); }
+    }
+  };
+
+  /* ---------- global console / error interception ---------- */
+  /* consoleSink is whichever output panel should currently receive console
+     output (the Run console, or the Terminal). Kept as a single global so
+     logs from timers/promises that fire after a run still land somewhere. */
+  var consoleSink = null;
+  var originalConsole = {
+    log: console.log.bind(console),
+    warn: console.warn.bind(console),
+    error: console.error.bind(console),
+    info: console.info.bind(console)
+  };
+  ["log","warn","error","info"].forEach(function(k){
+    console[k] = function(){
+      var args = Array.prototype.slice.call(arguments);
+      originalConsole[k].apply(console, args);
+      if (consoleSink) appendLine(consoleSink, k, args.map(safeStringify).join(" "));
+    };
+  });
+  window.addEventListener("error", function(e){
+    if (consoleSink) appendLine(consoleSink, "error", e.message || String(e.error || e));
+  });
+  window.addEventListener("unhandledrejection", function(e){
+    if (consoleSink){
+      var reason = e.reason;
+      appendLine(consoleSink, "error", "Unhandled promise rejection: " + (reason && reason.message ? reason.message : String(reason)));
+    }
+  });
+  function safeStringify(v){
+    if (v === undefined) return "undefined";
+    if (v === null) return "null";
+    if (typeof v === "function") return "[Function]";
+    if (typeof v === "object"){ try { return JSON.stringify(v); } catch(e){ return String(v); } }
+    return String(v);
+  }
+  function appendLine(el, type, text){
+    var div = document.createElement("div");
+    div.className = "console-line " + type;
+    div.textContent = text;
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  /* ---------- language map ---------- */
+  var LANG_MAP = {
+    html:{lang:"html",color:"#E8A33D",badge:"HTML"},
+    htm:{lang:"html",color:"#E8A33D",badge:"HTML"},
+    css:{lang:"css",color:"#4FA8E8",badge:"CSS"},
+    scss:{lang:"scss",color:"#E85F9C",badge:"SCS"},
+    less:{lang:"less",color:"#E85F9C",badge:"LES"},
+    js:{lang:"javascript",color:"#E8D93D",badge:"JS"},
+    mjs:{lang:"javascript",color:"#E8D93D",badge:"JS"},
+    cjs:{lang:"javascript",color:"#E8D93D",badge:"JS"},
+    jsx:{lang:"javascript",color:"#4FD1C5",badge:"JSX"},
+    ts:{lang:"typescript",color:"#4F7FE8",badge:"TS"},
+    tsx:{lang:"typescript",color:"#4F9FE8",badge:"TSX"},
+    json:{lang:"json",color:"#B0B8C4",badge:"JSN"},
+    py:{lang:"python",color:"#4FBFA8",badge:"PY"},
+    java:{lang:"java",color:"#E8763D",badge:"JAV"},
+    c:{lang:"c",color:"#8AA6E8",badge:"C"},
+    h:{lang:"c",color:"#8AA6E8",badge:"H"},
+    cpp:{lang:"cpp",color:"#8A6AE8",badge:"C++"},
+    cc:{lang:"cpp",color:"#8A6AE8",badge:"C++"},
+    hpp:{lang:"cpp",color:"#8A6AE8",badge:"HPP"},
+    cs:{lang:"csharp",color:"#8A5FE8",badge:"C#"},
+    go:{lang:"go",color:"#4FD1C5",badge:"GO"},
+    rs:{lang:"rust",color:"#E8763D",badge:"RS"},
+    rb:{lang:"ruby",color:"#E5586B",badge:"RB"},
+    php:{lang:"php",color:"#8A8AE8",badge:"PHP"},
+    swift:{lang:"swift",color:"#E8763D",badge:"SWI"},
+    kt:{lang:"kotlin",color:"#B085E8",badge:"KT"},
+    sql:{lang:"sql",color:"#4FA8E8",badge:"SQL"},
+    sh:{lang:"shell",color:"#B0B8C4",badge:"SH"},
+    bash:{lang:"shell",color:"#B0B8C4",badge:"SH"},
+    yml:{lang:"yaml",color:"#E85F9C",badge:"YML"},
+    yaml:{lang:"yaml",color:"#E85F9C",badge:"YML"},
+    md:{lang:"markdown",color:"#B0B8C4",badge:"MD"},
+    xml:{lang:"xml",color:"#E8A33D",badge:"XML"},
+    dart:{lang:"dart",color:"#4FBFE8",badge:"DRT"},
+    lua:{lang:"lua",color:"#4F7FE8",badge:"LUA"},
+    pl:{lang:"perl",color:"#4F7FE8",badge:"PL"},
+    r:{lang:"r",color:"#4F7FE8",badge:"R"},
+    scala:{lang:"scala",color:"#E5586B",badge:"SCA"},
+    dockerfile:{lang:"dockerfile",color:"#4FA8E8",badge:"DKR"},
+    ini:{lang:"ini",color:"#B0B8C4",badge:"INI"},
+    toml:{lang:"ini",color:"#B0B8C4",badge:"TML"},
+    txt:{lang:"plaintext",color:"#7C8394",badge:"TXT"}
+  };
+  var TEXT_EXTS = Object.keys(LANG_MAP).concat(["gitignore","env","cfg","conf"]);
+  function getExt(name){
+    var base = name.split("/").pop();
+    var m = /\.([a-zA-Z0-9]+)$/.exec(base);
+    if (m) return m[1].toLowerCase();
+    if (base.toLowerCase() === "dockerfile") return "dockerfile";
+    return "";
+  }
+  function getLangInfoForName(name){
+    var ext = getExt(name);
+    if (LANG_MAP[ext]) return LANG_MAP[ext];
+    var badge = ext ? ext.slice(0,3).toUpperCase() : "TXT";
+    return {lang:"plaintext", color:"#7C8394", badge:badge};
+  }
+
+  /* ---------- new-file templates ---------- */
+  function templateFor(name){
+    var ext = getExt(name);
+    if (ext === "html" || ext === "htm"){
+      return "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>" + name + "</title>\n</head>\n<body>\n  \n</body>\n</html>\n";
+    }
+    if (ext === "css") return "/* " + name + " */\n";
+    if (ext === "js" || ext === "mjs" || ext === "cjs") return "// " + name + "\n";
+    if (ext === "ts" || ext === "tsx") return "// " + name + "\n";
+    if (ext === "py") return "# " + name + "\n";
+    if (ext === "json") return "{\n  \n}\n";
+    if (ext === "md") return "# " + name.replace(/\.[^.]+$/, "") + "\n\n";
+    if (ext === "java"){
+      var cls = name.replace(/\.[^.]+$/, "");
+      return "public class " + cls + " {\n    public static void main(String[] args) {\n        \n    }\n}\n";
+    }
+    return "";
+  }
+
+  /* ---------- snippet completions ---------- */
+  var SNIPPETS = {
+    html: [
+      {label:"html5", body:"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n\t<meta charset=\"UTF-8\">\n\t<title>${1:Title}</title>\n</head>\n<body>\n\t$0\n</body>\n</html>"},
+      {label:"a", body:"<a href=\"${1:#}\">${2:link}</a>"},
+      {label:"img", body:"<img src=\"${1:src}\" alt=\"${2:alt}\">"}
+    ],
+    css: [
+      {label:"flex-center", body:"display: flex;\nalign-items: center;\njustify-content: center;"},
+      {label:"media", body:"@media (max-width: ${1:600px}) {\n\t$0\n}"},
+      {label:"grid", body:"display: grid;\ngrid-template-columns: ${1:1fr 1fr};\ngap: ${2:16px};"}
+    ],
+    javascript: [
+      {label:"log", body:"console.log($1);"},
+      {label:"func", body:"function ${1:name}(${2:args}) {\n\t$0\n}"},
+      {label:"arrow", body:"const ${1:name} = (${2:args}) => {\n\t$0\n};"},
+      {label:"forof", body:"for (const ${1:item} of ${2:items}) {\n\t$0\n}"},
+      {label:"fetch", body:"fetch(${1:url})\n\t.then(res => res.json())\n\t.then(data => {\n\t\t$0\n\t})\n\t.catch(err => console.error(err));"}
+    ],
+    typescript: [
+      {label:"log", body:"console.log($1);"},
+      {label:"func", body:"function ${1:name}(${2:args}): ${3:void} {\n\t$0\n}"},
+      {label:"interface", body:"interface ${1:Name} {\n\t$0\n}"}
+    ],
+    python: [
+      {label:"def", body:"def ${1:name}(${2:args}):\n\t$0"},
+      {label:"class", body:"class ${1:Name}:\n\tdef __init__(self):\n\t\t$0"},
+      {label:"main", body:"if __name__ == \"__main__\":\n\t$0"}
+    ],
+    java: [
+      {label:"sout", body:"System.out.println($1);"},
+      {label:"main", body:"public static void main(String[] args) {\n\t$0\n}"},
+      {label:"class", body:"public class ${1:Name} {\n\t$0\n}"}
+    ],
+    c: [
+      {label:"main", body:"int main() {\n\t$0\n\treturn 0;\n}"},
+      {label:"printf", body:"printf(\"$1\\n\");"}
+    ],
+    cpp: [
+      {label:"main", body:"int main() {\n\t$0\n\treturn 0;\n}"},
+      {label:"cout", body:"std::cout << $1 << std::endl;"}
+    ]
+  };
+  function registerAllSnippets(){
+    Object.keys(SNIPPETS).forEach(function(langId){
+      var list = SNIPPETS[langId];
+      monaco.languages.registerCompletionItemProvider(langId, {
+        provideCompletionItems: function(model, position){
+          var word = model.getWordUntilPosition(position);
+          var range = {startLineNumber:position.lineNumber, endLineNumber:position.lineNumber, startColumn:word.startColumn, endColumn:word.endColumn};
+          return { suggestions: list.map(function(s){
+            return {
+              label:s.label,
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              insertText: s.body,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              detail:"Nimbus snippet",
+              range: range
+            };
+          })};
+        }
+      });
+    });
+  }
+
+  /* ---------- state ---------- */
+  var state = {
+    files: [],
+    openTabs: [],
+    activeId: null,
+    settings: {theme:"dark", fontSize:14}
+  };
+  var models = new Map();
+  var diskHandles = {};   // id -> FileSystemFileHandle (web "Open folder" only, session-only)
+  var editor = null;
+  var STORAGE_KEY = "project";
+  var SKIP_DIRS = ["node_modules",".git","dist","build",".next","target","venv",".venv","__pycache__",".idea",".gradle"];
+  var MAX_IMPORT_FILES = 300;
+
+  function makeId(){
+    return "f" + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  }
+  function getFile(id){
+    for (var i=0;i<state.files.length;i++){ if (state.files[i].id===id) return state.files[i]; }
+    return null;
+  }
+  function uniqueName(name){
+    if (!state.files.some(function(f){ return f.name.toLowerCase()===name.toLowerCase(); })) return name;
+    var m = /^(.*?)(\.[^.]*)?$/.exec(name);
+    var stem = m[1], ext = m[2] || "";
+    var i = 1, candidate;
+    do { candidate = stem + " (" + i + ")" + ext; i++; }
+    while (state.files.some(function(f){ return f.name.toLowerCase()===candidate.toLowerCase(); }));
+    return candidate;
+  }
+
+  /* ---------- persistence ---------- */
+  function buildPayload(){
+    return {
+      files: state.files.map(function(f){
+        var m = models.get(f.id);
+        return {id:f.id, name:f.name, content: m ? m.getValue() : ""};
+      }),
+      openTabs: state.openTabs,
+      activeId: state.activeId,
+      settings: state.settings
+    };
+  }
+  var saveTimer = null;
+  function scheduleSave(){
+    setSaveState("saving");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(doSave, 600);
+  }
+  function doSave(){
+    var payload;
+    try { payload = JSON.stringify(buildPayload()); }
+    catch(e){ setSaveState("error"); return; }
+    Storage.set(STORAGE_KEY, payload).then(function(ok){
+      setSaveState(ok ? "saved" : "error");
+    });
+    writeBackActiveFileToDisk();
+  }
+  function writeBackActiveFileToDisk(){
+    var f = getFile(state.activeId);
+    if (!f || !f.disk) return;
+    var m = models.get(f.id);
+    if (!m) return;
+    var content = m.getValue();
+    if (f.disk === "android" && window.AndroidBridge && window.AndroidBridge.writeFolderFile){
+      try { window.AndroidBridge.writeFolderFile(f.name, content); } catch(e){ /* best effort */ }
+    } else if (f.disk === "web" && diskHandles[f.id]){
+      diskHandles[f.id].createWritable().then(function(w){
+        return w.write(content).then(function(){ return w.close(); });
+      }).catch(function(){ showToast("Could not save " + f.name + " to disk"); });
+    }
+  }
+  function setSaveState(kind){
+    var el = document.getElementById("saveState");
+    if (!el) return;
+    el.classList.remove("saved","error");
+    if (kind==="saving"){ el.textContent="Saving…"; }
+    else if (kind==="saved"){ el.textContent="Saved"; el.classList.add("saved"); }
+    else if (kind==="error"){ el.textContent="Save failed"; el.classList.add("error"); }
+    else { el.textContent="Ready"; }
+  }
+  function loadProject(){
+    return Storage.get(STORAGE_KEY).then(function(value){
+      if (value){ try { return JSON.parse(value); } catch(e){ return null; } }
+      return null;
+    });
+  }
+
+  /* ---------- default starter project ---------- */
+  var STARTERS = [
+    {name:"welcome.md", content:
+"# Welcome to Nimbus\n\nA code editor built for touch.\n\n## Tips\n\n- Tap the menu icon to open your files, or tap \"Open folder (device)\" to load a real folder from your phone's storage — edits save straight back to those files.\n- Tap + to create a new file — the extension picks the language and a starter template.\n- Autocomplete triggers as you type. Try typing \"func\", \"for\", \"def\" or \"class\" and pick the snippet.\n- The row above your keyboard has the symbols mobile keyboards hide.\n- The search icon finds text; the align icon formats the document (best on JS/TS/HTML/CSS/JSON).\n- The play button runs JavaScript and Python right on your device, or previews HTML files. Python loads a runtime the first time you run it (~10MB, one-time).\n- The terminal icon opens a JS/Python REPL with a few commands: ls, cat <file>, run <file>, clear.\n- Import existing files or a zipped project from the file panel, or download your project as a zip.\n- Rotate your phone — Nimbus adapts to landscape too.\n- Everything saves to this device automatically, nothing is uploaded anywhere.\n- Tap the ⋮ next to a file to rename, download, or delete it.\n\nHappy building.\n"},
+    {name:"index.html", content:
+"<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <title>Nimbus Preview</title>\n</head>\n<body>\n  <h1>Hello from Nimbus</h1>\n  <p>Edit this file, then tap the play button to see it live.</p>\n  <button id=\"go\">Click me</button>\n</body>\n</html>\n"},
+    {name:"style.css", content:
+"body {\n  font-family: sans-serif;\n  background: #0d0f14;\n  color: #e4e6eb;\n  display: grid;\n  place-items: center;\n  height: 100vh;\n  margin: 0;\n}\nbutton {\n  padding: 0.6em 1.2em;\n  border-radius: 6px;\n  border: none;\n  background: #e8a33d;\n  color: #0d0f14;\n  font-weight: 600;\n}\n"},
+    {name:"script.js", content:
+"document.getElementById('go').addEventListener('click', function () {\n  console.log('Button tapped');\n  document.querySelector('h1').textContent = 'Nimbus says hi!';\n});\n"},
+    {name:"main.py", content:
+"def greet(name):\n    return f\"Hello, {name}!\"\n\nprint(greet(\"world\"))\n\n# Tap the play button to actually run this — Python runs on-device via Pyodide.\n"}
+  ];
+
+  function createModelForFile(id, name, content){
+    var li = getLangInfoForName(name);
+    var uri = monaco.Uri.parse("inmemory://nimbus/" + id);
+    var model = monaco.editor.createModel(content || "", li.lang, uri);
+    models.set(id, model);
+    return model;
+  }
+
+  function createDefaultFiles(){
+    var ids = [];
+    STARTERS.forEach(function(s){
+      var id = makeId();
+      createModelForFile(id, s.name, s.content);
+      state.files.push({id:id, name:s.name});
+      ids.push(id);
+    });
+    state.openTabs = [ids[0], ids[1]];
+    state.activeId = ids[0];
+  }
+
+  /* ---------- themes ---------- */
+  function defineThemes(){
+    monaco.editor.defineTheme("nimbus-dark", {
+      base:"vs-dark", inherit:true, rules:[],
+      colors:{
+        "editor.background":"#0D0F14",
+        "editor.foreground":"#E4E6EB",
+        "editorLineNumber.foreground":"#3C4254",
+        "editorLineNumber.activeForeground":"#E8A33D",
+        "editorCursor.foreground":"#E8A33D",
+        "editor.lineHighlightBackground":"#161A24",
+        "editor.selectionBackground":"#2A3346",
+        "editorGutter.background":"#0D0F14",
+        "editorWidget.background":"#14171F",
+        "editorWidget.border":"#262B38",
+        "editorSuggestWidget.background":"#14171F",
+        "scrollbarSlider.background":"#262B3899"
+      }
+    });
+    monaco.editor.defineTheme("nimbus-light", {
+      base:"vs", inherit:true, rules:[],
+      colors:{
+        "editor.background":"#FAFAF8",
+        "editor.foreground":"#1B1F2A",
+        "editorLineNumber.activeForeground":"#B5762A",
+        "editorCursor.foreground":"#B5762A",
+        "editor.lineHighlightBackground":"#F0EFE6",
+        "editor.selectionBackground":"#E3D9C6"
+      }
+    });
+  }
+
+  /* ---------- init ---------- */
+  function initApp(){
+    defineThemes();
+    registerAllSnippets();
+    return loadProject().then(function(saved){
+      if (saved && saved.files && saved.files.length){
+        state.settings = Object.assign({theme:"dark", fontSize:14}, saved.settings || {});
+        saved.files.forEach(function(f){
+          createModelForFile(f.id, f.name, f.content);
+          state.files.push({id:f.id, name:f.name});
+        });
+        state.openTabs = (saved.openTabs || []).filter(function(id){ return models.has(id); });
+        if (!state.openTabs.length) state.openTabs = [state.files[0].id];
+        state.activeId = (saved.activeId && models.has(saved.activeId)) ? saved.activeId : state.openTabs[0];
+      } else {
+        createDefaultFiles();
+      }
+      document.documentElement.setAttribute("data-theme", state.settings.theme === "light" ? "light" : "dark");
+      createEditorInstance();
+      renderAll();
+      wireEvents();
+      setupViewportFix();
+      var lo = document.getElementById("loadingOverlay");
+      if (lo){ lo.classList.add("hidden"); setTimeout(function(){ lo.style.display="none"; }, 300); }
+      setSaveState("ready");
+    });
+  }
+
+  /* Keeps #app sized to the real visible viewport (excluding the on-screen
+     keyboard) so the accessory bar / tab strip / status bar always sit just
+     above the keyboard instead of being pushed off-screen or hidden behind
+     it. 100dvh alone doesn't track this reliably on every WebView build. */
+  function setupViewportFix(){
+    if (!window.visualViewport) return;
+    var app = document.getElementById("app");
+    function apply(){
+      app.style.height = window.visualViewport.height + "px";
+      if (editor) editor.layout();
+    }
+    window.visualViewport.addEventListener("resize", apply);
+    window.visualViewport.addEventListener("scroll", apply);
+    window.addEventListener("orientationchange", function(){ setTimeout(apply, 250); });
+    apply();
+  }
+
+  function createEditorInstance(){
+    editor = monaco.editor.create(document.getElementById("editor"), {
+      model: models.get(state.activeId),
+      theme: state.settings.theme === "light" ? "nimbus-light" : "nimbus-dark",
+      fontFamily: "'JetBrains Mono', ui-monospace, monospace",
+      fontLigatures: true,
+      fontSize: state.settings.fontSize || 14,
+      automaticLayout: true,
+      minimap: {enabled:false},
+      wordWrap: "on",
+      scrollBeyondLastLine: false,
+      smoothScrolling: true,
+      cursorBlinking: "smooth",
+      renderLineHighlight: "all",
+      tabSize: 2,
+      padding: {top:12, bottom:12},
+      overviewRulerLanes: 0,
+      contextmenu: false,
+      folding: true,
+      quickSuggestions: {other:true, comments:false, strings:true},
+      suggestOnTriggerCharacters: true,
+      acceptSuggestionOnEnter: "smart",
+      tabCompletion: "on",
+      snippetSuggestions: "inline",
+      parameterHints: {enabled:true},
+      autoClosingBrackets: "languageDefined",
+      autoClosingQuotes: "languageDefined",
+      autoSurround: "languageDefined",
+      matchBrackets: "always",
+      bracketPairColorization: {enabled:true},
+      guides: {bracketPairs:true, indentation:true},
+      formatOnPaste: true,
+      wordBasedSuggestions: "matchingDocuments"
+    });
+    editor.onDidChangeCursorPosition(function(e){
+      document.getElementById("statusPos").textContent = "Ln " + e.position.lineNumber + ", Col " + e.position.column;
+    });
+    editor.onDidChangeModelContent(function(){
+      scheduleSave();
+    });
+    updateStatusLang();
+    updateRunButtonVisibility();
+  }
+
+  /* ---------- rendering ---------- */
+  function renderAll(){
+    renderFileList();
+    renderTabs();
+    renderAccessoryBar();
+    updateStatusLang();
+    updateRunButtonVisibility();
+  }
+
+  function iconSvg(id, extraClass){
+    return '<svg class="icon' + (extraClass ? ' ' + extraClass : '') + '" aria-hidden="true"><use href="#' + id + '"></use></svg>';
+  }
+
+  function renderFileList(){
+    var list = document.getElementById("fileList");
+    list.innerHTML = "";
+    state.files.forEach(function(f){
+      var li = getLangInfoForName(f.name);
+      var row = document.createElement("div");
+      row.className = "file-item" + (f.id === state.activeId ? " active" : "");
+
+      var openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "file-open";
+      openBtn.setAttribute("aria-label", "Open " + f.name + (f.disk ? ", linked to device folder" : ""));
+
+      var badge = document.createElement("span");
+      badge.className = "file-badge";
+      badge.style.color = li.color;
+      badge.textContent = li.badge;
+
+      var name = document.createElement("span");
+      name.className = "file-name";
+      name.textContent = f.name;
+
+      openBtn.appendChild(badge);
+      openBtn.appendChild(name);
+      if (f.disk){
+        var dot = document.createElement("span");
+        dot.className = "disk-dot";
+        openBtn.appendChild(dot);
+      }
+      openBtn.addEventListener("click", function(){
+        openFile(f.id);
+        closeDrawer();
+      });
+
+      var menu = document.createElement("button");
+      menu.type = "button";
+      menu.className = "file-menu-btn";
+      menu.setAttribute("aria-label", "More actions for " + f.name);
+      menu.innerHTML = iconSvg("i-more", "icon-fill");
+      menu.addEventListener("click", function(ev){
+        ev.stopPropagation();
+        openFileActions(f.id);
+      });
+
+      row.appendChild(openBtn);
+      row.appendChild(menu);
+      list.appendChild(row);
+    });
+  }
+
+  function renderTabs(){
+    var strip = document.getElementById("tabStrip");
+    strip.innerHTML = "";
+    state.openTabs.forEach(function(id){
+      var f = getFile(id);
+      if (!f) return;
+      var li = getLangInfoForName(f.name);
+      var tab = document.createElement("div");
+      tab.className = "tab-item" + (id === state.activeId ? " active" : "");
+
+      var openBtn = document.createElement("button");
+      openBtn.type = "button";
+      openBtn.className = "tab-open";
+      openBtn.setAttribute("aria-label", "Switch to " + f.name);
+
+      var dot = document.createElement("span");
+      dot.className = "tab-dot";
+      dot.style.background = li.color;
+
+      var name = document.createElement("span");
+      name.className = "tab-name";
+      name.textContent = f.name;
+
+      openBtn.appendChild(dot);
+      openBtn.appendChild(name);
+      openBtn.addEventListener("click", function(){ setActive(id); });
+
+      var close = document.createElement("button");
+      close.type = "button";
+      close.className = "tab-close";
+      close.setAttribute("aria-label", "Close tab " + f.name);
+      close.innerHTML = iconSvg("i-close");
+      close.addEventListener("click", function(ev){
+        ev.stopPropagation();
+        closeTab(id);
+      });
+
+      tab.appendChild(openBtn);
+      tab.appendChild(close);
+      strip.appendChild(tab);
+
+      if (id === state.activeId){
+        setTimeout(function(){ tab.scrollIntoView({inline:"nearest", block:"nearest"}); }, 0);
+      }
+    });
+  }
+
+  var ACCESSORY_KEYS = [
+    {t:"⇥", type:"\t", label:"Insert tab"},
+    {t:"{", type:"{"}, {t:"}", type:"}"},
+    {t:"(", type:"("}, {t:")", type:")"},
+    {t:"[", type:"["}, {t:"]", type:"]"},
+    {t:";", type:";"}, {t:":", type:":"},
+    {t:'"', type:'"'}, {t:"'", type:"'"},
+    {t:"<", type:"<"}, {t:">", type:">"},
+    {t:"/", type:"/"}, {t:"\\", type:"\\"},
+    {t:"=", type:"="}, {t:"_", type:"_"}, {t:"-", type:"-"},
+    {t:"$", type:"$"}, {t:"#", type:"#"}, {t:"|", type:"|"},
+    {t:"&", type:"&"}, {t:"!", type:"!"},
+    {t:"←", cmd:"cursorLeft", label:"Move left"}, {t:"→", cmd:"cursorRight", label:"Move right"},
+    {t:"↑", cmd:"cursorUp", label:"Move up"}, {t:"↓", cmd:"cursorDown", label:"Move down"},
+    {t:"⌫", cmd:"deleteLeft", label:"Backspace"},
+    {t:"↶", cmd:"undo", label:"Undo"}, {t:"↷", cmd:"redo", label:"Redo"},
+    {t:"//", cmd:"editor.action.commentLine", label:"Toggle comment"}
+  ];
+  function renderAccessoryBar(){
+    var bar = document.getElementById("accessoryBar");
+    if (bar.childElementCount) return;
+    ACCESSORY_KEYS.forEach(function(k){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "acc-key";
+      btn.textContent = k.t;
+      btn.setAttribute("aria-label", k.label || ("Insert " + k.t));
+      btn.addEventListener("click", function(){
+        if (!editor) return;
+        editor.focus();
+        if (k.type !== undefined) editor.trigger("keyboard", "type", {text:k.type});
+        else if (k.cmd) editor.trigger("keyboard", k.cmd, null);
+      });
+      bar.appendChild(btn);
+    });
+  }
+
+  function updateStatusLang(){
+    var f = getFile(state.activeId);
+    var el = document.getElementById("statusLang");
+    if (!f){ el.textContent = "—"; return; }
+    el.textContent = getLangInfoForName(f.name).badge;
+  }
+  function updateRunButtonVisibility(){
+    var f = getFile(state.activeId);
+    var btn = document.getElementById("btnPreview");
+    if (!f){ btn.hidden = true; return; }
+    var ext = getExt(f.name);
+    if (ext === "html" || ext === "htm"){ btn.hidden = false; btn.setAttribute("aria-label","Preview"); }
+    else if (ext === "js" || ext === "mjs" || ext === "cjs" || ext === "py"){ btn.hidden = false; btn.setAttribute("aria-label","Run"); }
+    else { btn.hidden = true; }
+  }
+
+  /* ---------- file actions ---------- */
+  function openFile(id){
+    if (state.openTabs.indexOf(id) === -1) state.openTabs.push(id);
+    setActive(id);
+  }
+  function setActive(id){
+    state.activeId = id;
+    if (editor) editor.setModel(models.get(id));
+    updateStatusLang();
+    updateRunButtonVisibility();
+    renderTabs();
+    renderFileList();
+    if (editor) editor.focus();
+    scheduleSave();
+  }
+  function closeTab(id){
+    var idx = state.openTabs.indexOf(id);
+    if (idx === -1) return;
+    state.openTabs.splice(idx,1);
+    if (state.activeId === id){
+      if (state.openTabs.length){
+        setActive(state.openTabs[Math.max(0, idx-1)]);
+      } else if (state.files.length){
+        openFile(state.files[0].id);
+      } else {
+        ensureAtLeastOneFile();
+      }
+    } else {
+      renderTabs();
+      scheduleSave();
+    }
+  }
+  function deleteFile(id){
+    var idx = state.files.findIndex(function(f){ return f.id === id; });
+    if (idx === -1) return;
+    state.files.splice(idx,1);
+    var m = models.get(id);
+    if (m) m.dispose();
+    models.delete(id);
+    delete diskHandles[id];
+    var tabIdx = state.openTabs.indexOf(id);
+    if (tabIdx !== -1) state.openTabs.splice(tabIdx,1);
+
+    if (state.activeId === id){
+      if (state.openTabs.length){
+        setActive(state.openTabs[Math.max(0, tabIdx-1)]);
+      } else if (state.files.length){
+        openFile(state.files[0].id);
+      } else {
+        ensureAtLeastOneFile();
+      }
+    }
+    renderAll();
+    scheduleSave();
+  }
+  function ensureAtLeastOneFile(){
+    var id = makeId();
+    createModelForFile(id, "untitled.txt", "");
+    state.files.push({id:id, name:"untitled.txt"});
+    state.openTabs = [id];
+    setActive(id);
+    renderAll();
+  }
+
+  function newFile(){
+    openModal({
+      title:"New file",
+      showInput:true,
+      inputValue:"",
+      okLabel:"Create",
+      onOk:function(name){
+        name = (name||"").trim();
+        if (!name) return "Enter a file name";
+        if (state.files.some(function(f){ return f.name.toLowerCase() === name.toLowerCase(); })) return "That name is taken";
+        var id = makeId();
+        createModelForFile(id, name, templateFor(name));
+        state.files.push({id:id, name:name});
+        openFile(id);
+        renderAll();
+        scheduleSave();
+      }
+    });
+  }
+  function renameFile(id){
+    var f = getFile(id);
+    if (!f) return;
+    openModal({
+      title:"Rename file",
+      showInput:true,
+      inputValue:f.name,
+      okLabel:"Rename",
+      onOk:function(name){
+        name = (name||"").trim();
+        if (!name) return "Enter a file name";
+        if (state.files.some(function(x){ return x.id !== id && x.name.toLowerCase() === name.toLowerCase(); })) return "That name is taken";
+        f.name = name;
+        var li = getLangInfoForName(name);
+        var m = models.get(id);
+        if (m) monaco.editor.setModelLanguage(m, li.lang);
+        renderAll();
+        scheduleSave();
+      }
+    });
+  }
+  function confirmDelete(id){
+    var f = getFile(id);
+    if (!f) return;
+    openModal({
+      title:"Delete file",
+      showInput:false,
+      message:'Delete "' + f.name + '"? This can\u2019t be undone.',
+      okLabel:"Delete",
+      danger:true,
+      onOk:function(){ deleteFile(id); }
+    });
+  }
+  function downloadFile(id){
+    var f = getFile(id);
+    var m = models.get(id);
+    if (!f || !m) return;
+    var content = m.getValue();
+    if (window.AndroidBridge && window.AndroidBridge.saveTextFile){
+      try {
+        window.AndroidBridge.saveTextFile(f.name, content);
+        showToast("Saved to Downloads");
+        return;
+      } catch(e){ /* fall through to browser download */ }
+    }
+    var blob = new Blob([content], {type:"text/plain"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = f.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+  function downloadZip(){
+    if (!window.JSZip){ showToast("Zip library unavailable"); return; }
+    try {
+      var zip = new JSZip();
+      state.files.forEach(function(f){
+        var m = models.get(f.id);
+        zip.file(f.name, m ? m.getValue() : "");
+      });
+      if (window.AndroidBridge && window.AndroidBridge.saveBinaryFile){
+        zip.generateAsync({type:"base64"}).then(function(b64){
+          try {
+            window.AndroidBridge.saveBinaryFile("nimbus-project.zip", b64);
+            showToast("Saved to Downloads");
+          } catch(e){ showToast("Could not save zip"); }
+        }).catch(function(){ showToast("Could not build zip"); });
+        return;
+      }
+      zip.generateAsync({type:"blob"}).then(function(blob){
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url; a.download = "nimbus-project.zip";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+      }).catch(function(){ showToast("Could not build zip"); });
+    } catch(e){ showToast("Could not build zip"); }
+  }
+
+  function openFileActions(id){
+    var f = getFile(id);
+    if (!f) return;
+    openActionSheet(f.name, [
+      {label:"Rename", fn:function(){ renameFile(id); }},
+      {label:"Download", fn:function(){ downloadFile(id); }},
+      {label:"Delete", danger:true, fn:function(){ confirmDelete(id); }}
+    ]);
+  }
+
+  /* ---------- import (loose files / zip) ---------- */
+  function readFileAsText(file){
+    return new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(r.result); };
+      r.onerror = reject;
+      r.readAsText(file);
+    });
+  }
+  function importFiles(fileList){
+    var files = Array.prototype.slice.call(fileList || []);
+    if (!files.length) return;
+    Promise.all(files.map(function(file){
+      return readFileAsText(file).then(function(text){
+        var name = uniqueName(file.name);
+        var id = makeId();
+        createModelForFile(id, name, text);
+        state.files.push({id:id, name:name});
+      });
+    })).then(function(){
+      renderAll();
+      scheduleSave();
+      showToast(files.length + (files.length === 1 ? " file imported" : " files imported"));
+    }).catch(function(){ showToast("Could not import files"); });
+  }
+  function importZip(file){
+    if (!file) return;
+    if (!window.JSZip){ showToast("Zip library unavailable"); return; }
+    file.arrayBuffer().then(function(buf){ return JSZip.loadAsync(buf); }).then(function(zip){
+      var entries = Object.keys(zip.files).filter(function(p){ return !zip.files[p].dir; });
+      return Promise.all(entries.map(function(path){
+        return zip.files[path].async("string").then(function(text){
+          var name = uniqueName(path);
+          var id = makeId();
+          createModelForFile(id, name, text);
+          state.files.push({id:id, name:name});
+        });
+      }));
+    }).then(function(){
+      renderAll();
+      scheduleSave();
+      showToast("Project imported");
+      closeDrawer();
+    }).catch(function(){ showToast("Could not read zip"); });
+  }
+
+  /* ---------- open folder (device storage, like VS Code's Open Folder) ---------- */
+  function openFolder(){
+    if (window.AndroidBridge && window.AndroidBridge.pickFolder){
+      try { window.AndroidBridge.pickFolder(); }
+      catch(e){ showToast("Could not open folder picker"); }
+    } else if (window.showDirectoryPicker){
+      openFolderWeb();
+    } else {
+      showToast("Folder access needs the Android app or a desktop Chrome/Edge browser — try Import instead");
+    }
+  }
+  async function openFolderWeb(){
+    try {
+      var dirHandle = await window.showDirectoryPicker();
+      showToast("Reading folder…");
+      var files = [];
+      var truncated = false;
+      async function walk(handle, prefix){
+        for await (var entry of handle.entries()){
+          var name = entry[0], entryHandle = entry[1];
+          if (files.length >= MAX_IMPORT_FILES){ truncated = true; return; }
+          if (SKIP_DIRS.indexOf(name) !== -1 || name.charAt(0) === ".") continue;
+          var path = prefix ? prefix + "/" + name : name;
+          if (entryHandle.kind === "directory"){
+            await walk(entryHandle, path);
+          } else {
+            try {
+              var file = await entryHandle.getFile();
+              if (file.size > 2000000) continue;
+              var text = await file.text();
+              files.push({path:path, content:text, handle:entryHandle});
+            } catch(e){ /* skip unreadable/binary file */ }
+          }
+          if (files.length >= MAX_IMPORT_FILES){ truncated = true; return; }
+        }
+      }
+      await walk(dirHandle, "");
+      if (truncated) showToast("Folder is large — only the first " + MAX_IMPORT_FILES + " files were loaded");
+      loadFolderIntoProject(files, "web", dirHandle.name);
+    } catch(e){
+      if (e && e.name === "AbortError") return;
+      showToast("Could not open folder");
+    }
+  }
+  window.onFolderOpened = function(jsonStr){
+    try {
+      var data = JSON.parse(jsonStr);
+      if (data.truncated) showToast("Folder is large — only the first " + MAX_IMPORT_FILES + " files were loaded");
+      loadFolderIntoProject(data.files || [], "android", data.folderName || "folder");
+    } catch(e){ showToast("Could not read folder"); }
+  };
+  window.onFolderOpenFailed = function(msg){
+    if (msg) showToast(msg);
+  };
+  function loadFolderIntoProject(fileArray, backend, folderName){
+    if (!fileArray.length){ showToast("No readable files found in that folder"); return; }
+    openModal({
+      title:"Open folder",
+      showInput:false,
+      message:'Open "' + folderName + '" (' + fileArray.length + " file" + (fileArray.length===1?"":"s") + ')? This replaces your current tabs.',
+      okLabel:"Open",
+      onOk:function(){
+        models.forEach(function(m){ m.dispose(); });
+        models.clear();
+        diskHandles = {};
+        state.files = [];
+        state.openTabs = [];
+        fileArray.forEach(function(entry){
+          var id = makeId();
+          createModelForFile(id, entry.path, entry.content);
+          state.files.push({id:id, name:entry.path, disk:backend});
+          if (backend === "web" && entry.handle) diskHandles[id] = entry.handle;
+        });
+        state.activeId = state.files[0].id;
+        state.openTabs = [state.activeId];
+        if (editor) editor.setModel(models.get(state.activeId));
+        renderAll();
+        scheduleSave();
+        showToast("Opened " + fileArray.length + " files");
+      }
+    });
+  }
+
+  /* ---------- run / preview / terminal execution ---------- */
+  function execJS(code, sinkEl){
+    consoleSink = sinkEl;
+    try {
+      var result;
+      try { result = (new Function("return (" + code + ")"))(); }
+      catch(wrapErr){ result = (new Function(code))(); }
+      if (result !== undefined) appendLine(sinkEl, "info", "=> " + safeStringify(result));
+    } catch(e){
+      appendLine(sinkEl, "error", e && e.message ? e.message : String(e));
+    }
+  }
+
+  var pyodideInstance = null;
+  var pyodideLoading = null;
+  function ensurePyodide(sinkEl){
+    if (pyodideInstance) return Promise.resolve(pyodideInstance);
+    if (pyodideLoading) return pyodideLoading;
+    if (sinkEl) appendLine(sinkEl, "info", "Loading Python runtime (first run only, ~10MB)…");
+    pyodideLoading = new Promise(function(resolve, reject){
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/pyodide/v" + PYODIDE_VERSION + "/full/pyodide.js";
+      s.onload = function(){
+        window.loadPyodide().then(function(pyo){
+          pyo.setStdout({batched:function(msg){ if (consoleSink) appendLine(consoleSink, "log", msg); }});
+          pyo.setStderr({batched:function(msg){ if (consoleSink) appendLine(consoleSink, "error", msg); }});
+          pyodideInstance = pyo;
+          resolve(pyo);
+        }).catch(reject);
+      };
+      s.onerror = function(){ reject(new Error("Could not load the Python runtime — check your connection")); };
+      document.head.appendChild(s);
+    });
+    return pyodideLoading;
+  }
+  function execPython(code, sinkEl){
+    consoleSink = sinkEl;
+    return ensurePyodide(sinkEl).then(function(pyo){
+      return pyo.runPythonAsync(code);
+    }).then(function(result){
+      if (result !== undefined && result !== null){
+        try { appendLine(sinkEl, "info", "=> " + String(result)); } catch(e){ /* ignore */ }
+      }
+    }).catch(function(err){
+      appendLine(sinkEl, "error", err && err.message ? err.message : String(err));
+    });
+  }
+
+  function runActive(){
+    var f = getFile(state.activeId);
+    if (!f) return;
+    var ext = getExt(f.name);
+    var content = models.get(f.id).getValue();
+    if (ext === "html" || ext === "htm"){ runPreview(content); openSheet(); return; }
+    document.getElementById("sheetTitle").textContent = "Console";
+    var pf = document.getElementById("previewFrame");
+    var co = document.getElementById("consoleOut");
+    pf.hidden = true; co.hidden = false; co.innerHTML = "";
+    openSheet();
+    if (ext === "py") execPython(content, co);
+    else execJS(content, co);
+  }
+  function runPreview(html){
+    var css = state.files.filter(function(f){ return getExt(f.name) === "css"; })
+      .map(function(f){ return models.get(f.id).getValue(); }).join("\n");
+    var js = state.files.filter(function(f){ var e=getExt(f.name); return e==="js"||e==="mjs"||e==="cjs"; })
+      .map(function(f){ return models.get(f.id).getValue(); }).join("\n;\n");
+    var doc = html;
+    var styleTag = "<style>\n" + css + "\n</style>";
+    var scriptTag = "<script>\n" + js + "\n<\/script>";
+    if (/<\/head>/i.test(doc)) doc = doc.replace(/<\/head>/i, styleTag + "</head>");
+    else if (/<html[^>]*>/i.test(doc)) doc = doc.replace(/<html[^>]*>/i, function(m){ return m + "<head>" + styleTag + "</head>"; });
+    else doc = styleTag + doc;
+    if (/<\/body>/i.test(doc)) doc = doc.replace(/<\/body>/i, scriptTag + "</body>");
+    else doc += scriptTag;
+
+    document.getElementById("sheetTitle").textContent = "Preview";
+    var pf = document.getElementById("previewFrame");
+    var co = document.getElementById("consoleOut");
+    pf.hidden = false; co.hidden = true;
+    pf.srcdoc = doc;
+  }
+  function openSheet(){
+    closeTerminal();
+    document.getElementById("sheet").classList.add("open");
+    setTimeout(function(){ if (editor) editor.layout(); }, 260);
+  }
+  function closeSheet(){
+    document.getElementById("sheet").classList.remove("open");
+    consoleSink = null;
+    setTimeout(function(){ if (editor) editor.layout(); }, 260);
+  }
+
+  /* ---------- terminal ---------- */
+  var termMode = "js";
+  var termHistory = [];
+  var termHistoryIdx = 0;
+  function openTerminal(){
+    closeSheetSilent();
+    document.getElementById("terminalSheet").classList.add("open");
+    consoleSink = document.getElementById("terminalOut");
+    setTimeout(function(){
+      document.getElementById("terminalInput").focus();
+      if (editor) editor.layout();
+    }, 260);
+  }
+  function closeSheetSilent(){
+    document.getElementById("sheet").classList.remove("open");
+  }
+  function closeTerminal(){
+    document.getElementById("terminalSheet").classList.remove("open");
+    if (consoleSink === document.getElementById("terminalOut")) consoleSink = null;
+    setTimeout(function(){ if (editor) editor.layout(); }, 260);
+  }
+  function setTermMode(mode){
+    termMode = mode;
+    document.getElementById("termModeJs").classList.toggle("active", mode === "js");
+    document.getElementById("termModePy").classList.toggle("active", mode === "py");
+    document.getElementById("termPrompt").textContent = mode + ">";
+    if (mode === "py") ensurePyodide(document.getElementById("terminalOut"));
+  }
+  function runTerminalLine(line){
+    var out = document.getElementById("terminalOut");
+    appendLine(out, "cmd", (termMode === "js" ? "js> " : "py> ") + line);
+    var trimmed = line.trim();
+    if (!trimmed) return;
+    var parts = trimmed.split(/\s+/);
+    var cmd = parts[0].toLowerCase();
+    if (cmd === "clear"){ out.innerHTML = ""; return; }
+    if (cmd === "help"){
+      appendLine(out, "info", "Commands: ls, cat <file>, run <file>, clear, help. Anything else runs as " + (termMode === "js" ? "JavaScript" : "Python") + ".");
+      return;
+    }
+    if (cmd === "ls"){
+      appendLine(out, "log", state.files.map(function(f){ return f.name; }).join("  ") || "(no files)");
+      return;
+    }
+    if (cmd === "cat" && parts.length > 1){
+      var f = state.files.find(function(x){ return x.name === parts[1]; });
+      if (!f){ appendLine(out, "error", "No such file: " + parts[1]); return; }
+      appendLine(out, "log", models.get(f.id).getValue());
+      return;
+    }
+    if (cmd === "run" && parts.length > 1){
+      var rf = state.files.find(function(x){ return x.name === parts[1]; });
+      if (!rf){ appendLine(out, "error", "No such file: " + parts[1]); return; }
+      var ext = getExt(rf.name);
+      var content = models.get(rf.id).getValue();
+      if (ext === "py") execPython(content, out);
+      else if (ext === "js" || ext === "mjs" || ext === "cjs") execJS(content, out);
+      else if (ext === "html" || ext === "htm"){ appendLine(out, "info", "Opening preview…"); openFile(rf.id); runActive(); }
+      else appendLine(out, "error", "Don\u2019t know how to run ." + ext + " files");
+      return;
+    }
+    if (termMode === "js") execJS(trimmed, out);
+    else execPython(trimmed, out);
+  }
+
+  /* ---------- modal ---------- */
+  var pendingOnOk = null;
+  var lastFocusedEl = null;
+  function openModal(opts){
+    lastFocusedEl = document.activeElement;
+    pendingOnOk = opts.onOk;
+    document.getElementById("modalTitle").textContent = opts.title || "";
+    var input = document.getElementById("modalInput");
+    var msg = document.getElementById("modalMsg");
+    var ok = document.getElementById("modalOk");
+    input.hidden = !opts.showInput;
+    if (opts.showInput){
+      input.value = opts.inputValue || "";
+    }
+    if (opts.message){
+      msg.textContent = opts.message;
+      msg.hidden = false;
+      msg.classList.remove("error");
+    } else {
+      msg.hidden = true;
+    }
+    ok.textContent = opts.okLabel || "OK";
+    ok.classList.toggle("danger", !!opts.danger);
+    document.getElementById("modalBackdrop").classList.add("show");
+    setTimeout(function(){ (opts.showInput ? input : ok).focus(); if (opts.showInput) input.select(); }, 50);
+  }
+  function closeModal(){
+    document.getElementById("modalBackdrop").classList.remove("show");
+    pendingOnOk = null;
+    if (lastFocusedEl && lastFocusedEl.focus) lastFocusedEl.focus();
+  }
+  function handleModalOk(){
+    if (!pendingOnOk) { closeModal(); return; }
+    var input = document.getElementById("modalInput");
+    var val = input.hidden ? undefined : input.value;
+    var result = pendingOnOk(val);
+    if (typeof result === "string"){
+      var msg = document.getElementById("modalMsg");
+      msg.textContent = result;
+      msg.hidden = false;
+      msg.classList.add("error");
+    } else {
+      closeModal();
+    }
+  }
+
+  /* ---------- action sheet ---------- */
+  function openActionSheet(title, actions){
+    lastFocusedEl = document.activeElement;
+    document.getElementById("actionSheetTitle").textContent = title;
+    var body = document.getElementById("actionSheetBody");
+    body.innerHTML = "";
+    actions.forEach(function(a){
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "action-item" + (a.danger ? " danger" : "");
+      btn.textContent = a.label;
+      btn.addEventListener("click", function(){
+        closeActionSheet();
+        a.fn();
+      });
+      body.appendChild(btn);
+    });
+    var cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "action-item cancel";
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", closeActionSheet);
+    body.appendChild(cancel);
+    document.getElementById("actionSheetBackdrop").classList.add("show");
+    setTimeout(function(){ var first = body.querySelector("button"); if (first) first.focus(); }, 50);
+  }
+  function closeActionSheet(){
+    document.getElementById("actionSheetBackdrop").classList.remove("show");
+    if (lastFocusedEl && lastFocusedEl.focus) lastFocusedEl.focus();
+  }
+
+  /* ---------- toast ---------- */
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+  }
+
+  /* ---------- drawer ---------- */
+  function openDrawer(){
+    document.getElementById("drawer").classList.add("open");
+    document.getElementById("backdrop").classList.add("show");
+  }
+  function closeDrawer(){
+    document.getElementById("drawer").classList.remove("open");
+    document.getElementById("backdrop").classList.remove("show");
+  }
+
+  /* ---------- theme / font ---------- */
+  function toggleTheme(){
+    state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", state.settings.theme);
+    monaco.editor.setTheme(state.settings.theme === "light" ? "nimbus-light" : "nimbus-dark");
+    scheduleSave();
+  }
+  function bumpFont(delta){
+    var size = Math.min(22, Math.max(10, (state.settings.fontSize || 14) + delta));
+    state.settings.fontSize = size;
+    if (editor) editor.updateOptions({fontSize:size});
+    scheduleSave();
+  }
+
+  /* ---------- wire up ---------- */
+  function wireEvents(){
+    document.getElementById("btnMenu").addEventListener("click", openDrawer);
+    document.getElementById("backdrop").addEventListener("click", closeDrawer);
+    document.getElementById("btnNewFile").addEventListener("click", newFile);
+    document.getElementById("btnOpenFolder").addEventListener("click", openFolder);
+    document.getElementById("btnDownloadZip").addEventListener("click", downloadZip);
+    document.getElementById("btnImportFiles").addEventListener("click", function(){
+      document.getElementById("importFileInput").click();
+    });
+    document.getElementById("btnImportZip").addEventListener("click", function(){
+      document.getElementById("importZipInput").click();
+    });
+    document.getElementById("importFileInput").addEventListener("change", function(e){
+      importFiles(e.target.files);
+      e.target.value = "";
+    });
+    document.getElementById("importZipInput").addEventListener("change", function(e){
+      var file = e.target.files && e.target.files[0];
+      importZip(file);
+      e.target.value = "";
+    });
+    document.getElementById("btnPreview").addEventListener("click", runActive);
+    document.getElementById("btnFind").addEventListener("click", function(){
+      if (!editor) return;
+      editor.focus();
+      editor.trigger("toolbar", "actions.find", null);
+    });
+    document.getElementById("btnFormat").addEventListener("click", function(){
+      if (!editor) return;
+      editor.focus();
+      editor.trigger("toolbar", "editor.action.formatDocument", null);
+    });
+    document.getElementById("btnClearSheet").addEventListener("click", function(){
+      document.getElementById("consoleOut").innerHTML = "";
+    });
+    document.getElementById("btnCloseSheet").addEventListener("click", closeSheet);
+
+    document.getElementById("btnTerminal").addEventListener("click", function(){
+      var t = document.getElementById("terminalSheet");
+      if (t.classList.contains("open")) closeTerminal(); else openTerminal();
+    });
+    document.getElementById("btnCloseTerminal").addEventListener("click", closeTerminal);
+    document.getElementById("btnClearTerminal").addEventListener("click", function(){
+      document.getElementById("terminalOut").innerHTML = "";
+    });
+    document.getElementById("termModeJs").addEventListener("click", function(){ setTermMode("js"); });
+    document.getElementById("termModePy").addEventListener("click", function(){ setTermMode("py"); });
+    document.getElementById("terminalInput").addEventListener("keydown", function(e){
+      if (e.key === "Enter"){
+        var val = this.value;
+        if (!val.trim()) return;
+        termHistory.push(val);
+        termHistoryIdx = termHistory.length;
+        runTerminalLine(val);
+        this.value = "";
+      } else if (e.key === "ArrowUp"){
+        if (termHistoryIdx > 0){ termHistoryIdx--; this.value = termHistory[termHistoryIdx] || ""; e.preventDefault(); }
+      } else if (e.key === "ArrowDown"){
+        if (termHistoryIdx < termHistory.length - 1){ termHistoryIdx++; this.value = termHistory[termHistoryIdx] || ""; }
+        else { termHistoryIdx = termHistory.length; this.value = ""; }
+        e.preventDefault();
+      }
+    });
+
+    document.getElementById("btnTheme").addEventListener("click", toggleTheme);
+    document.getElementById("btnFontUp").addEventListener("click", function(){ bumpFont(1); });
+    document.getElementById("btnFontDown").addEventListener("click", function(){ bumpFont(-1); });
+
+    document.getElementById("modalCancel").addEventListener("click", closeModal);
+    document.getElementById("modalOk").addEventListener("click", handleModalOk);
+    document.getElementById("modalInput").addEventListener("keydown", function(e){
+      if (e.key === "Enter") handleModalOk();
+    });
+    document.getElementById("modalBackdrop").addEventListener("click", function(e){
+      if (e.target === this) closeModal();
+    });
+    document.getElementById("actionSheetBackdrop").addEventListener("click", function(e){
+      if (e.target === this) closeActionSheet();
+    });
+
+    window.addEventListener("resize", function(){
+      if (editor) editor.layout();
+    });
+  }
+
+})();
+</script>
+</body>
+</html>

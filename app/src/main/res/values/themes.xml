@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.NimbusIDE" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">@color/nimbus_bg</item>
+        <item name="android:statusBarColor">@color/nimbus_bg</item>
+        <item name="android:navigationBarColor">@color/nimbus_bg</item>
+        <item name="colorPrimary">@color/nimbus_accent</item>
+    </style>
+</resources>
