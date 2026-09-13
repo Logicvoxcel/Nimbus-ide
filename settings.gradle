@@ -1,17 +1,80 @@
 pluginManagement {
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+    def flutterSdkPath = {
+        def execution = new groovy.GroovyShell(
+                binding: new Binding([
+                        gradle: gradle,
+                        settings: settings
+                ]),
+                loader: this.class.classLoader
+        ).evaluate('''
+            def properties = new Properties()
+            def file = new File(System.getenv("FLUTTER_HOME") ?: settings.rootDir.parent, "flutter_path.txt")
+            if (file.exists()) {
+                file.withInputStream { properties.load(it) }
+                return properties.getProperty("flutter.sdk")
+            }
+            def gradleHome = new File(System.getenv("GRADLE_USER_HOME") ?: "${System.getenv("HOME")}/.gradle")
+            def flutterSdkPath = gradleHome.listFiles()?.find { it.name == "flutter" }
+            if (flutterSdkPath) {
+                return flutterSdkPath.absolutePath
+            }
+            return null
+        ''')
+        return execution()
+    }.call()
+
+    def flutterEnginePath = flutterSdkPath ? "${flutterSdkPath}/engine" : null
+
+    if (flutterEnginePath) {
+        repositories {
+            maven {
+                url flutterEnginePath
+            }
+        }
     }
-}
-dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+
     repositories {
+        gradlePluginPortal()
         google()
         mavenCentral()
     }
 }
 
-rootProject.name = "Nimbus IDE"
+plugins {
+    id "dev.flutter.flutter-plugin-validator" apply false
+    id "org.gradle.toolchains.foojay-resolver-convention" version "0.7.0"
+}
+
+rootProject.name = 'nimbus_ide'
+
 include ':app'
+
+def flutterSdkPath = {
+    def execution = new groovy.GroovyShell(
+            binding: new Binding([
+                    gradle: gradle,
+                    settings: settings
+            ]),
+            loader: this.class.classLoader
+    ).evaluate('''
+        def properties = new Properties()
+        def file = new File(System.getenv("FLUTTER_HOME") ?: settings.rootDir.parent, "flutter_path.txt")
+        if (file.exists()) {
+            file.withInputStream { properties.load(it) }
+            return properties.getProperty("flutter.sdk")
+        }
+        def gradleHome = new File(System.getenv("GRADLE_USER_HOME") ?: "${System.getenv("HOME")}/.gradle")
+        def flutterSdkPath = gradleHome.listFiles()?.find { it.name == "flutter" }
+        if (flutterSdkPath) {
+            return flutterSdkPath.absolutePath
+        }
+        return null
+    ''')
+    return execution()
+}.call()
+
+if (flutterSdkPath) {
+    println "Flutter SDK found at: ${flutterSdkPath}"
+} else {
+    println "Flutter SDK not found, using default configuration"
+}
