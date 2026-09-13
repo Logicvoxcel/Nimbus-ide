@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 
-import 'language_map.dart';
+import '../services/language_map.dart';
 
 /// A single open file. Unlike the earlier web version, there is no virtual
 /// in-memory storage layer here -- `file` is a real file on disk (either
