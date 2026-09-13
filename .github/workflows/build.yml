@@ -1,14 +1,5 @@
 name: Build APK
 
-<<<<<<< HEAD
-# Builds entirely on GitHub's cloud runners -- no Android Studio or SDK
-# needed on your own device. Trigger it by pushing to main, or manually
-# from the Actions tab (useful from the GitHub mobile app / mobile browser).
-=======
-# Builds entirely on GitHub's cloud runners -- no Flutter SDK or Android
-# Studio needed on your own device. Trigger it by pushing to main, or
-# manually from the Actions tab (works fine from the GitHub mobile app).
->>>>>>> 4caed5a (First commit)
 on:
   workflow_dispatch:
   push:
@@ -27,37 +18,22 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-<<<<<<< HEAD
-      - name: Set up the Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
-=======
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+
+      - name: Create local.properties
+        run: echo "flutter.sdk=$FLUTTER_HOME" > android/local.properties
 
       - name: Install dependencies
         run: flutter pub get
 
       - name: Build debug APK
         run: flutter build apk --debug
->>>>>>> 4caed5a (First commit)
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: nimbus-ide-debug-apk
-<<<<<<< HEAD
-          path: app/build/outputs/apk/debug/app-debug.apk
-=======
           path: build/app/outputs/flutter-apk/app-debug.apk
->>>>>>> 4caed5a (First commit)
