@@ -8,7 +8,7 @@ import 'package:highlight/languages/json.dart';
 import 'package:highlight/languages/python.dart';
 import 'package:highlight/languages/java.dart';
 import 'package:highlight/languages/cpp.dart';
-import 'package:highlight/languages/csharp.dart';
+import 'package:highlight/languages/cs.dart';
 import 'package:highlight/languages/go.dart';
 import 'package:highlight/languages/rust.dart';
 import 'package:highlight/languages/ruby.dart';
@@ -58,7 +58,7 @@ final Map<String, LanguageInfo> _byExt = {
   'cpp': LanguageInfo(cpp, 'C++'),
   'cc': LanguageInfo(cpp, 'C++'),
   'hpp': LanguageInfo(cpp, 'HPP'),
-  'cs': LanguageInfo(csharp, 'C#'),
+  'cs': LanguageInfo(cs, 'C#'),
   'go': LanguageInfo(go, 'GO'),
   'rs': LanguageInfo(rust, 'RS'),
   'rb': LanguageInfo(ruby, 'RB'),
