@@ -1,16 +1,3 @@
-<<<<<<< HEAD
-*.iml
-.gradle
-/local.properties
-.idea/
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
-*.apk
-*.aab
-=======
 # Flutter/Dart
 .dart_tool/
 .packages
@@ -31,4 +18,3 @@ android/gradle-wrapper.jar.sha256
 .vscode/
 
 .DS_Store
->>>>>>> 4caed5a (First commit)
