@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 *.iml
 .gradle
 /local.properties
@@ -9,3 +10,25 @@
 .cxx
 *.apk
 *.aab
+=======
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+
+# Android
+android/local.properties
+android/.gradle/
+android/.idea/
+android/*.iml
+android/gradle-wrapper.jar.sha256
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+.DS_Store
+>>>>>>> 4caed5a (First commit)

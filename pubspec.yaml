@@ -1,0 +1,45 @@
+name: nimbus_ide
+description: A mobile code editor for (almost) every language, built with Flutter.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Editor: syntax highlighting, folding, line numbers.
+  flutter_code_editor: ^0.3.5
+  highlight: ^0.7.0
+  flutter_highlight: ^0.7.0
+
+  # On-device JavaScript execution (QuickJS on Android) — no server, no WebView.
+  flutter_js: ^0.8.1
+
+  # Native "open folder" / "import files" pickers (uses Android's Storage
+  # Access Framework under the hood).
+  file_picker: ^8.1.2
+
+  # Real on-disk project storage.
+  path_provider: ^2.1.4
+  shared_preferences: ^2.3.2
+
+  # Zip import/export for whole projects.
+  archive: ^3.6.1
+
+  # Native share sheet for exporting a file (save to Drive, send, etc.)
+  share_plus: ^10.0.2
+
+  google_fonts: ^6.2.1
+  path: ^1.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
