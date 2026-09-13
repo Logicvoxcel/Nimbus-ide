@@ -38,8 +38,8 @@ class AccessoryBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 40,
-      color: NimbusColors.bgPanel,
       decoration: const BoxDecoration(
+        color: NimbusColors.bgPanel,
         border: Border(top: BorderSide(color: NimbusColors.line)),
       ),
       child: ListView(
