@@ -6,12 +6,12 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Environment
-import androidx.annotation.NonNull
+import android.provider.MediaStore
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import android.provider.MediaStore
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 /**
@@ -27,7 +27,7 @@ class MainActivity : FlutterActivity() {
     private val runCommandPermission = "com.termux.permission.RUN_COMMAND"
     private val permissionRequestCode = 4201
 
-    override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName).setMethodCallHandler { call, result ->
@@ -59,7 +59,7 @@ class MainActivity : FlutterActivity() {
         ActivityCompat.requestPermissions(this, arrayOf(runCommandPermission), permissionRequestCode)
     }
 
-    private fun handleRunCommand(call: MethodChannel.MethodCall, result: MethodChannel.Result) {
+    private fun handleRunCommand(call: MethodCall, result: MethodChannel.Result) {
         if (!isTermuxInstalled()) {
             result.error("NOT_INSTALLED", "Termux is not installed", null)
             return
@@ -120,7 +120,7 @@ class MainActivity : FlutterActivity() {
      * a plain path argument. Requires the user to have granted Termux
      * storage access so it can see files here too.
      */
-    private fun handleStageFile(call: MethodChannel.MethodCall, result: MethodChannel.Result) {
+    private fun handleStageFile(call: MethodCall, result: MethodChannel.Result) {
         val subDir = call.argument<String>("subDir") ?: "run"
         val filename = call.argument<String>("filename")
         val content = call.argument<String>("content")

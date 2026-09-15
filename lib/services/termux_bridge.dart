@@ -75,9 +75,21 @@ class TermuxBridge {
         'arguments': arguments,
         'workdir': workdir,
         'background': background,
-      });
+      }).timeout(
+        const Duration(seconds: 25),
+        onTimeout: () => null,
+      );
       if (raw == null) {
-        return const TermuxResult(stdout: '', stderr: '', exitCode: -1, err: -1, errmsg: 'No response from Termux');
+        return const TermuxResult(
+          stdout: '',
+          stderr: '',
+          exitCode: -1,
+          err: -1,
+          errmsg: 'Termux never responded. Open the Termux status sheet and confirm '
+              'allow-external-apps is enabled in ~/.termux/termux.properties — '
+              "Termux silently rejects commands (with its own error screen, not ours) "
+              'when that\u2019s off.',
+        );
       }
       return TermuxResult(
         stdout: (raw['stdout'] as String?) ?? '',

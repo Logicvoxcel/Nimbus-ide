@@ -110,14 +110,34 @@ class _TermuxSetupSheetState extends State<_TermuxSetupSheet> {
                   'One-time setup, run inside Termux itself:',
                   style: TextStyle(color: NimbusColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+                const Text(
+                  '1. Required — without this, Termux refuses every command '
+                  'from Nimbus (or any other app):',
+                  style: TextStyle(color: NimbusColors.accent, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
+                const _CommandBlock(
+                  'echo "allow-external-apps=true" >> ~/.termux/termux.properties && termux-reload-settings',
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '2. Lets Termux see files Nimbus stages for it:',
+                  style: TextStyle(color: NimbusColors.textDim, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 6),
                 const _CommandBlock('termux-setup-storage'),
+                const SizedBox(height: 12),
+                const Text(
+                  '3. Install whatever languages you actually plan to run:',
+                  style: TextStyle(color: NimbusColors.textDim, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 6),
                 const _CommandBlock('pkg install python nodejs golang rust ruby openjdk-17 clang -y'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 const Text(
-                  'Only install what you actually plan to run -- each package '
-                  'download adds to that one-time setup.',
+                  'Each package download adds to this one-time setup, so only '
+                  'grab what you need.',
                   style: TextStyle(color: NimbusColors.textDim, fontSize: 11, height: 1.4),
                 ),
               ],
