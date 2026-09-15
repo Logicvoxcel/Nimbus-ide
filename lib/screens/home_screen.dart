@@ -84,7 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
       showConsole = true;
       running = true;
       consoleLines.clear();
-      consoleLines.add(const ConsoleLine('Running…', false));
+      consoleLines.add(ConsoleLine('Running…', false));
     });
 
     final outcome = await TermuxRunService.run(file);
