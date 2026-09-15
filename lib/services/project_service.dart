@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/code_file.dart';
+import 'auto_indent.dart';
 import 'language_map.dart';
 
 /// Owns the project's files, tabs, and a few user preferences. Everything
@@ -96,6 +97,7 @@ class ProjectService extends ChangeNotifier {
       fromExternalFolder: fromExternalFolder ?? isExternalFolder,
     );
     cf.listenForChanges(scheduleSave);
+    attachAutoIndent(cf.controller);
     return cf;
   }
 

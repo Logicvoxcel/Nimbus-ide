@@ -10,9 +10,18 @@ class AccessoryBar extends StatelessWidget {
 
   final CodeController controller;
 
-  static const _keys = [
-    '\t', '{', '}', '(', ')', '[', ']', ';', ':', '"', "'",
-    '<', '>', '/', '\\', '=', '_', '-', '\$', '#', '|', '&', '!', ',',
+  static const _keys = <({String label, String insert})>[
+    (label: '⇥', insert: '  '),
+    (label: '{', insert: '{'), (label: '}', insert: '}'),
+    (label: '(', insert: '('), (label: ')', insert: ')'),
+    (label: '[', insert: '['), (label: ']', insert: ']'),
+    (label: ';', insert: ';'), (label: ':', insert: ':'),
+    (label: '"', insert: '"'), (label: "'", insert: "'"),
+    (label: '<', insert: '<'), (label: '>', insert: '>'),
+    (label: '/', insert: '/'), (label: '\\', insert: '\\'),
+    (label: '=', insert: '='), (label: '_', insert: '_'), (label: '-', insert: '-'),
+    (label: '\$', insert: '\$'), (label: '#', insert: '#'), (label: '|', insert: '|'),
+    (label: '&', insert: '&'), (label: '!', insert: '!'), (label: ',', insert: ','),
   ];
 
   void _insert(String text) {
@@ -46,7 +55,7 @@ class AccessoryBar extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         children: [
-          ..._keys.map((k) => _Key(label: k == '\t' ? '⇥' : k, onTap: () => _insert(k))),
+          ..._keys.map((k) => _Key(label: k.label, onTap: () => _insert(k.insert))),
           _Key(label: '←', onTap: () => _moveCursor(-1)),
           _Key(label: '→', onTap: () => _moveCursor(1)),
         ],

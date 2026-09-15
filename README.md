@@ -16,6 +16,9 @@ and JavaScript execution all run natively on-device. There's deliberately no
 
 - Syntax highlighting for 25+ languages (`lib/services/language_map.dart`
   is the single place to add more).
+- Auto-indent on Enter (matches the previous line, plus one level deeper
+  after an opening bracket/colon) — built on plain `TextEditingController`
+  APIs rather than relying on an editor package's undocumented internals.
 - Real files: everything lives directly on your device's storage via normal
   file I/O — no more serializing a virtual filesystem into a storage blob.
 - **Open folder (device)** — uses Android's Storage Access Framework
@@ -23,25 +26,54 @@ and JavaScript execution all run natively on-device. There's deliberately no
   straight back to those exact files.
 - Import loose files or a whole `.zip` project; export a file or the whole
   project as a `.zip` through the native share sheet.
-- **Run** executes JavaScript on-device via an embedded engine
-  (`flutter_js`) — no server, no WebView.
+- **Run** executes JavaScript instantly on-device via an embedded engine
+  (`flutter_js`, zero setup needed), and everything else —
+  **Python, C, C++, Java, Go, Ruby, PHP, Rust, Bash, Perl, Lua** — through
+  [Termux](https://github.com/termux/termux-app), a free, open-source
+  terminal app. See "Running non-JS languages" below.
 - Dark/light theme toggle, adjustable font size, a symbol row above the
   keyboard for characters mobile keyboards bury.
 
-## Deliberately not included yet
+## Running non-JS languages (Termux)
 
-- **Python execution.** The realistic option on Android is
-  [Chaquopy](https://chaquo.com), which runs real CPython in-app -- but it's
-  free only for open-source projects; closed-source commercial apps need a
-  paid license after the trial period. Rather than wire that in silently,
-  it's left out until you decide whether that tradeoff is worth it for this
-  project. If you want it added: say the word and confirm the license is
-  fine, and it plugs in as its own module without touching the rest of the
-  app.
-- **Find & replace**, **HTML/CSS live preview**, and **autocomplete
-  snippets** from the earlier web version — all doable in Flutter, trimmed
-  from this pass to get a working core shipped first rather than a bigger
-  surface area untested end-to-end.
+Rather than bundle a separate paid SDK per language (the realistic option
+for embedded Python, Chaquopy, needs a commercial license for closed-source
+apps), Nimbus talks to [Termux](https://github.com/termux/termux-app) —
+GPL-3.0, free, and since we only communicate with it over Android's normal
+inter-app Intent messaging (never linking its code into our binary), that
+doesn't pull this app under GPL either. One integration gets us every
+language Termux can install, instead of one engine per language.
+
+**How it works:** `android/app/src/main/kotlin/com/nimbus/ide/MainActivity.kt`
+implements Termux's documented
+[RUN_COMMAND intent API](https://github.com/termux/termux-app/wiki/RUN_COMMAND-Intent).
+Files inside an **opened folder** run at their real, existing path directly.
+Files in the app's own private project folder get staged first into the
+public `Download/NimbusIDE/run/` folder via MediaStore (deliberately not
+using the broader `MANAGE_EXTERNAL_STORAGE` permission — that one draws
+heavy Play Store scrutiny for apps that aren't file managers).
+
+**What the user needs to do once:** install Termux from F-Droid (not the
+Play Store listing — it's been discontinued for years), grant this app's
+"Termux status" button the RUN_COMMAND permission when prompted, then run
+`termux-setup-storage` and `pkg install <whatever languages you want>`
+inside Termux itself. The in-app Termux status sheet (terminal icon in the
+top bar) walks through all of this and shows exactly which step is next.
+
+**Honest limitation:** RUN_COMMAND's result comes back as one bundle after
+the whole process exits — there's no live-streaming output or interactive
+stdin mid-run yet. Fine for scripts and short programs; a long-running or
+interactive program will show nothing until it finishes.
+
+## Not built yet
+
+- **Autocomplete / IntelliSense-style suggestions.** Queued as the next
+  focused piece — it touches cursor-position tracking and overlay
+  rendering, real surface area on its own, so it's deliberately not bolted
+  onto this same pass alongside the Termux integration above.
+- **Find & replace** and **HTML/CSS live preview** from the earlier web
+  version.
+
 
 ## Package versions
 

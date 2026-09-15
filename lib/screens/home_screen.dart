@@ -6,11 +6,15 @@ import 'package:flutter_highlight/themes/monokai-sublime.dart';
 import '../services/js_runner.dart';
 import '../services/language_map.dart';
 import '../services/project_service.dart';
+import '../services/run_commands.dart';
+import '../services/termux_bridge.dart';
+import '../services/termux_run_service.dart';
 import '../theme/nimbus_colors.dart';
 import '../widgets/accessory_bar.dart';
 import '../widgets/console_panel.dart';
 import '../widgets/file_explorer_drawer.dart';
 import '../widgets/tab_strip.dart';
+import '../widgets/termux_setup_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final JsRunner jsRunner = JsRunner();
 
   bool loading = true;
+  bool running = false;
   bool showConsole = false;
   final List<ConsoleLine> consoleLines = [];
 
@@ -53,20 +58,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _runActive() async {
     final file = project.activeFile;
-    if (file == null) return;
+    if (file == null || running) return;
+    final name = file.displayName.split('/').last;
+
+    if (isRunnableJs(name)) {
+      setState(() {
+        showConsole = true;
+        consoleLines.clear();
+      });
+      await jsRunner.run(file.controller.text, (line, isError) {
+        if (mounted) setState(() => consoleLines.add(ConsoleLine(line, isError)));
+      });
+      return;
+    }
+
+    if (shellCommandFor(name) == null) return; // canRun already filters this out
+
+    final ready = await TermuxBridge.isInstalled() && await TermuxBridge.hasPermission();
+    if (!ready) {
+      if (mounted) await showTermuxSetupSheet(context);
+      return;
+    }
+
     setState(() {
       showConsole = true;
+      running = true;
       consoleLines.clear();
+      consoleLines.add(const ConsoleLine('Running…', false));
     });
-    await jsRunner.run(file.controller.text, (line, isError) {
-      if (mounted) setState(() => consoleLines.add(ConsoleLine(line, isError)));
+
+    final outcome = await TermuxRunService.run(file);
+
+    if (!mounted) return;
+    setState(() {
+      running = false;
+      consoleLines.clear();
+      for (final l in outcome.lines) {
+        consoleLines.add(ConsoleLine(l.text, l.isError));
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final activeFile = project.activeFile;
-    final canRun = activeFile != null && isRunnableJs(activeFile.displayName);
+    final activeName = activeFile?.displayName.split('/').last;
+    final canRun = activeName != null && (isRunnableJs(activeName) || shellCommandFor(activeName) != null);
 
     return Scaffold(
       backgroundColor: NimbusColors.bgVoid,
@@ -82,10 +119,21 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           if (canRun)
             IconButton(
-              tooltip: 'Run',
-              icon: const Icon(Icons.play_arrow, color: NimbusColors.accent),
-              onPressed: _runActive,
+              tooltip: running ? 'Running…' : 'Run',
+              icon: running
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: NimbusColors.accent),
+                    )
+                  : const Icon(Icons.play_arrow, color: NimbusColors.accent),
+              onPressed: running ? null : _runActive,
             ),
+          IconButton(
+            tooltip: 'Termux status',
+            icon: const Icon(Icons.terminal, size: 20),
+            onPressed: () => showTermuxSetupSheet(context),
+          ),
           IconButton(
             tooltip: 'Toggle theme',
             icon: Icon(project.isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),

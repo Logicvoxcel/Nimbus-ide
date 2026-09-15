@@ -1,9 +1,19 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!--
-      No INTERNET permission here on purpose: the editor, syntax highlighting,
-      JS execution, and file access all run fully on-device. If you add a
-      networked feature later (e.g. package installs), add it back then.
+      No general INTERNET permission: the editor, syntax highlighting, and
+      file access all run fully on-device. RUN_COMMAND below is Termux's own
+      permission (not a network permission) - it lets this app ask the
+      separately-installed Termux app to execute a command on our behalf.
     -->
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND" />
+
+    <!-- Required on Android 11+ (targetSdk 30+) to even detect whether
+         Termux is installed - without this, package visibility rules hide
+         other apps from PackageManager queries by default. -->
+    <queries>
+        <package android:name="com.termux" />
+    </queries>
+
     <application
         android:label="Nimbus IDE"
         android:name="${applicationName}"
@@ -24,8 +34,17 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Receives the result (stdout/stderr/exit code) back from Termux
+             after it runs a command we sent it. Not exported - only Termux
+             delivering to the exact PendingIntent we handed it can reach it. -->
+        <service
+            android:name=".TermuxResultService"
+            android:exported="false" />
+
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
     </application>
 </manifest>
+
